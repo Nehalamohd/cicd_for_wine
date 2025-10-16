@@ -1,0 +1,42 @@
+name: ML CI/CD Pipeline
+
+on:
+    push:
+        branches: [main]
+
+jobs:
+    build-train-deploy:
+        runs-on: window-latest
+
+        steps:
+        - name: Checkout code
+          uses: actions/setup-python@v3
+        - name: Set up Python
+          uses: actions/setup-python@v4
+          with:
+            python-version: 3.11
+        
+        - name: Install dep
+          run: pip install -r requirements.txt
+
+        - name: Train
+          run: python src/train.py
+
+        - name: Build
+          run: docker build -t ml-cicd-wine
+        
+        - name: Run doc count
+          run:  docker run -d -p 5000:5000 --name ml-cicd-container
+        
+        - name: Wait for app
+          run: |
+            echo "Waiting"
+            for i in {1..12}; do
+              if docker exec ml-cicd-container curl -s http://localhost:5000/health > /dev/null;
+                echo "flask is healthy"
+                break
+              else
+                echo"waiting"
+                sleep 5
+              fi
+            done
